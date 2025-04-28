@@ -2,10 +2,9 @@ import sys
 import math
 
 def euclideanDist(x,y):
-    baseDist = [math.pow((x[i] - y[i]),2) for i in range(len(x))]
-    return math.sqrt(sum(baseDist))
+    return math.sqrt(sum((xi - yi) ** 2 for xi, yi in zip(x, y)))
 
-def calcMin(x,centeroids):
+def calcMin(x,centroids):
     distances = [euclideanDist(x, centroid) for centroid in centroids]
     return distances.index(min(distances))
 
@@ -38,8 +37,7 @@ def assignClusters(vectors, centroids, k): # derive new clusters from centroids
 def newCentr(cluster, dim): 
     if len(cluster) < 2:
         return cluster[0]
-    for _ in range(dim):
-        new_centroid = [[] for _ in range(dim)]
+    new_centroid = [0] * dim
     size = len(cluster)
     for i in range(dim):
         new_centroid[i] = (sum(cluster[j][i] for j in range(size)))/size 
@@ -49,11 +47,20 @@ def updateCentr(vectors, centroids, clusters): # update centroids according to n
     old_centroids = centroids
     new_centroids = []
     flag = False
-    for centroid, index in enumerate(centroids):
+    for index, centroid in enumerate(centroids):
         new_centroids.append(newCentr(clusters[index], len(vectors[0])))
-    if euclideanDist(old_centroids, new_centroids) > 0.001:
-        flag = True
+    flag = not has_converged(old_centroids, new_centroids)
     return (new_centroids, flag)
+
+def has_converged(old_centroids, new_centroids):
+    for old, new in zip(old_centroids, new_centroids):
+        if euclideanDist(old, new) >= 0.001:
+            return False
+    return True
+
+def print_cents(centroids):
+    for centroid in centroids:
+        print(",".join(f"{float(x):.4f}" for x in centroid))
     
 def main(): # main function 
     vectors, k ,iter = readData(sys.argv)
@@ -62,11 +69,13 @@ def main(): # main function
         clusters = assignClusters(vectors, centroids, k)
         centroids, flag = updateCentr(vectors, centroids, clusters)
         if not flag:
-            return centroids
-    return centroids 
+            break
+    print_cents(centroids)
+    
 
 if __name__  == "__main__" :
     main()
+
             
 
 
