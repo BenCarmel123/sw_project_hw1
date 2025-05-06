@@ -7,8 +7,9 @@
 #define MAX_DIM 64
 
 double euclideanDist(double* x, double*y, int dim) {
-    double sum = 0.0
-    for (int i = 0; i < dim; i++)
+    double sum = 0.0;
+    int i;
+    for (i = 0; i < dim; i++)
     {
         sum += pow(x[i] - y[i], 2);
     }
@@ -20,8 +21,8 @@ int clacMin(double* x, double** centroids, int k, int dim)
 {
     int minIndex = 0;
     double minDist = euclideanDist(x, centroids[0], dim);
-
-    for (int i = 1; i < k; i++)
+    int i;
+    for (i = 1; i < k; i++)
     {
         double dist = euclideanDist(x, centroids[i], dim);
         if (dist < minDist) {
@@ -37,7 +38,7 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
     int capacity = 100;
     int vectorCount = 0;
 
-    // Handle command line args
+    /* Handle command line args */
     *k = atoi(argv[1]);
     *iter = (argc == 2) ? 400 : atoi(argv[2]);
 
@@ -46,7 +47,7 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
         exit(1);
     }
 
-    // Allocate initial space for vectors
+    /* Allocate initial space for vectors */
     double** vectors = malloc(capacity * sizeof(double*));
     if (!vectors) {
         printf("Memory allocation failed.\n");
@@ -54,9 +55,9 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
     }
 
     while (fgets(line, sizeof(line), stdin)) {
-        if (line[0] == '\n' || line[0] == '\0') continue; // skip empty lines
+        if (line[0] == '\n' || line[0] == '\0') continue; /* skip empty lines */
 
-        // Allocate space for 1 vector
+        /* Allocate space for 1 vector */
         double* vector = malloc(MAX_DIM * sizeof(double));
         if (!vector) {
             printf("Memory allocation failed.\n");
@@ -71,7 +72,7 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
         }
 
         if (vectorCount == 0) {
-            *dim = i; // save vector dimensionality
+            *dim = i; /* save vector dimensionality */
         }
 
         if (i != *dim) {
@@ -102,13 +103,14 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
 
 double** initCentr(double** vectors, int k, int dim) {
     double** centroids = malloc(k * sizeof(double*));
-    for (int i = 0; i < k; i++) {
+    int i;
+    for (i = 0; i < k; i++) {
         centroids[i] = malloc(dim * sizeof(double));
         if (!centroids[i]) {
             printf("Memory allocation failed.\n");
             exit(1);
         }
-        memcpy(centroids[i], vectors[i], dim * sizeof(double)); // copy vector
+        memcpy(centroids[i], vectors[i], dim * sizeof(double)); /* copy vector */
     }
     return centroids;
 }
@@ -118,19 +120,20 @@ void assignClusters(
     double** centroids, int k, int dim,
     double**** clustersOut, int** clusterSizesOut
 ) {
-    // Allocate array of cluster arrays
+    /* Allocate array of cluster arrays */
     double*** clusters = malloc(k * sizeof(double**));
     int* clusterSizes = calloc(k, sizeof(int));
     int* clusterCaps = malloc(k * sizeof(int));
 
-    // Initialize empty clusters
-    for (int i = 0; i < k; i++) {
+    int i;
+    for (i = 0; i < k; i++) {
         clusterCaps[i] = 10;
         clusters[i] = malloc(clusterCaps[i] * sizeof(double*));
     }
 
-    for (int v = 0; v < numVectors; v++) {
-        int closest = calcMin(vectors[v], centroids, k, dim);
+    int v;
+    for (v = 0; v < numVectors; v++) {
+        int closest = clacMin(vectors[v], centroids, k, dim);
 
         if (clusterSizes[closest] >= clusterCaps[closest]) {
             clusterCaps[closest] *= 2;
@@ -147,20 +150,21 @@ void assignClusters(
 }
 
 double* newCentr(double** cluster, int size, int dim) {
+    int i, j;
     if (size < 2) {
-        // Return a copy of the only vector
+        /* Return a copy of the only vector */
         double* centroid = malloc(dim * sizeof(double));
-        for (int i = 0; i < dim; i++) {
+        for (i = 0; i < dim; i++) {
             centroid[i] = cluster[0][i];
         }
         return centroid;
     }
 
-    // Allocate new centroid
-    double* new_centroid = calloc(dim, sizeof(double)); // zero-initialized
+    /* Allocate new centroid */
+    double* new_centroid = calloc(dim, sizeof(double)); /* zero-initialized */
 
-    for (int i = 0; i < dim; i++) {
-        for (int j = 0; j < size; j++) {
+    for (i = 0; i < dim; i++) {
+        for (j = 0; j < size; j++) {
             new_centroid[i] += cluster[j][i];
         }
         new_centroid[i] /= size;
@@ -169,12 +173,22 @@ double* newCentr(double** cluster, int size, int dim) {
     return new_centroid;
 }
 
-bool updateCentr(
-    double*** clusters,    // array of k clusters
-    int* clusterSizes,     // number of vectors in each cluster
-    double*** centroids,   // pointer to current centroids (updated in-place)
-    int k,                 // number of clusters
-    int dim                // vector dimension
+int has_converged(double** old_centroids, double** new_centroids, int k, int dim) {
+    int i;
+    for (i = 0; i < k; i++) {
+        if (euclideanDist(old_centroids[i], new_centroids[i], dim) >= 0.001) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int updateCentr(
+    double*** clusters,    /* array of k clusters */
+    int* clusterSizes,     /* number of vectors in each cluster */
+    double*** centroids,   /* pointer to current centroids (updated in-place) */
+    int k,                 /* number of clusters */
+    int dim                /* vector dimension */
 ) {
     double** old_centroids = *centroids;
     double** new_centroids = malloc(k * sizeof(double*));
@@ -184,14 +198,14 @@ bool updateCentr(
         exit(1);
     }
 
-    for (int i = 0; i < k; i++) {
+    int i;
+    for (i = 0; i < k; i++) {
         new_centroids[i] = newCentr(clusters[i], clusterSizes[i], dim);
     }
 
-    bool flag = !has_converged(old_centroids, new_centroids, k, dim);
+    int flag = !has_converged(old_centroids, new_centroids, k, dim);
 
-    // Free old centroids and replace
-    for (int i = 0; i < k; i++) {
+    for (i = 0; i < k; i++) {
         free(old_centroids[i]);
     }
     free(old_centroids);
@@ -200,18 +214,10 @@ bool updateCentr(
     return flag;
 }
 
-bool has_converged(double** old_centroids, double** new_centroids, int k, int dim) {
-    for (int i = 0; i < k; i++) {
-        if (euclideanDist(old_centroids[i], new_centroids[i], dim) >= 0.001) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void print_cents(double** centroids, int k, int dim) {
-    for (int i = 0; i < k; i++) {
-        for (int j = 0; j < dim; j++) {
+    int i, j;
+    for (i = 0; i < k; i++) {
+        for (j = 0; j < dim; j++) {
             printf("%.4f", centroids[i][j]);
             if (j < dim - 1) {
                 printf(",");
@@ -221,58 +227,36 @@ void print_cents(double** centroids, int k, int dim) {
     }
 }
 
-def main(): # main function 
-    vectors, k ,iter = readData(sys.argv) # Read 
-    centroids = initCentr(vectors, k) # Initialize centroids as first k vectors
-    for i in range(iter): # Update and check centroids num_of_iterations times
-        clusters = assignClusters(vectors, centroids, k) # Assign clusters according to changes
-        centroids, flag = updateCentr(vectors, centroids, clusters) # Update centroids values (averages)
-        if not flag: # Break if has converged before max iterations number
-            break
-    print_cents(centroids) # Print centroids
-    #include <stdio.h>
-    #include <stdlib.h>
-    #include <stdbool.h>
-    
-    // Assume all required function declarations are defined above main
-    
-    int main(int argc, char* argv[]) {
-        int k, iter, numVectors, dim;
-    
-        // === Step 1: Read Data ===
-        double** vectors = readData(argc, argv, &k, &iter, &numVectors, &dim);
-    
-        // === Step 2: Initialize Centroids ===
-        double** centroids = initCentr(vectors, k, dim);
-    
-        // === Step 3: Main Loop ===
-        for (int i = 0; i < iter; i++) {
-            double*** clusters;
-            int* clusterSizes;
-    
-            assignClusters(vectors, numVectors, centroids, k, dim, &clusters, &clusterSizes);
-    
-            bool flag = updateCentr(clusters, clusterSizes, &centroids, k, dim);
-    
-            // Free old clusters
-            for (int c = 0; c < k; c++) {
-                free(clusters[c]);
-            }
-            free(clusters);
-            free(clusterSizes);
-    
-            if (!flag) break;
+int main(int argc, char* argv[]) {
+    int k, iter, numVectors, dim;
+    int i, c;
+    double** vectors = readData(argc, argv, &k, &iter, &numVectors, &dim);
+    double** centroids = initCentr(vectors, k, dim);
+
+    for (i = 0; i < iter; i++) {
+        double*** clusters;
+        int* clusterSizes;
+        int flag;
+
+        assignClusters(vectors, numVectors, centroids, k, dim, &clusters, &clusterSizes);
+        flag = updateCentr(clusters, clusterSizes, &centroids, k, dim);
+
+        for (c = 0; c < k; c++) {
+            free(clusters[c]);
         }
-    
-        // === Step 4: Print Final Centroids ===
-        print_cents(centroids, k, dim);
-    
-        // === Cleanup ===
-        for (int i = 0; i < numVectors; i++) free(vectors[i]);
-        free(vectors);
-    
-        for (int i = 0; i < k; i++) free(centroids[i]);
-        free(centroids);
-    
-        return 0;
+        free(clusters);
+        free(clusterSizes);
+
+        if (!flag) break;
     }
+
+    print_cents(centroids, k, dim);
+
+    for (i = 0; i < numVectors; i++) free(vectors[i]);
+    free(vectors);
+
+    for (i = 0; i < k; i++) free(centroids[i]);
+    free(centroids);
+
+    return 0;
+}
