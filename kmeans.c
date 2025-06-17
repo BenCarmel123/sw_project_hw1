@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #define MAX_LINE_LEN 1024
-#define MAX_DIM 64
 
 double euclideanDist(double* x, double*y, int dim) { /* Calculate Euclidean distance between 2 Vectors */
     double sum = 0.0;
@@ -70,6 +69,7 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
     double* vector;
     char* token;
     int i;
+    char* p;
 
     *k = atoi(argv[1]);
     *iter = (argc == 2) ? 400 : atoi(argv[2]); /* Check if iter is given or define as 400 */
@@ -83,20 +83,28 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
     
     while (fgets(line, sizeof(line), stdin)) {
         if (line[0] == '\n' || line[0] == '\0') continue; /* skip empty lines */
-        
-        vector = malloc(MAX_DIM * sizeof(double));
+        if (vectorCount==0){
+            *dim =1;
+            for (p = line; *p; p++) { /* Count the number of dimensions */
+                if (*p == ',') (*dim)++;
+            }
+
+        }
+        vector = malloc(*dim * sizeof(double));
         if (!vector) {
             printf("Memory allocation failed.\n");
             exit(1);
         }
-
+        
         i = 0;
         token = my_string(line, ','); /* Split line by commas */
-        while (token && i < MAX_DIM) { /* Convert each line to a Vector */
+        while (token) { /* Convert each line to a Vector */
             vector[i++] = atof(token);
             token = my_string(NULL, ',');
         }
 
+        /* *dim = i; FIX ! Set dimension to the number of elements in the vector */
+        
         if (vectorCount == capacity) { /* Check if we need to reallocate memory */
             capacity *= 2;
             vectors = realloc(vectors, capacity * sizeof(double*));
@@ -109,7 +117,7 @@ double** readData(int argc, char* argv[], int* k, int* iter, int* numVectors, in
         vectors[vectorCount++] = vector;
     }
 
-    if (vectorCount < *k) {
+    if (vectorCount <= *k) { /* FIX: check if k is valid (in old code checked only K>N) */
         printf("Incorrect number of clusters!\n"); /*Error 1 - Stop Program*/
         exit(1);
     }
@@ -269,6 +277,17 @@ int main(int argc, char* argv[]) {
     }
 
     print_cents(centroids, k, dim); /* Print */
+
+    
+    /*FIX: Free centroids allocated */
+    for (i = 0; i < k; i++) {
+        free(centroids[i]);
+    }
+    free(centroids);
+    for (i = 0; i < numVectors; i++) {
+        free(vectors[i]);
+    }
+    free(vectors);
 
     return 0;
 }
